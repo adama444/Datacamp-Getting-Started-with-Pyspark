@@ -1,31 +1,47 @@
+# Module importation
+from pyspark.sql.context import SparkSession
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
-from pyspark.ml.feature import VectorAssembler
-from pyspark.ml.feature import StandardScaler
+from pyspark.ml.feature import VectorAssembler, StandardScaler
 from pyspark.ml.clustering import KMeans
 from pyspark.ml.evaluation import ClusteringEvaluator
 import numpy as np
 
 
-spark = SparkSession.builder.appName("Datacamp Pyspark Tutorial").getOrCreate()
+# Initialize the spark session
+spark = (
+    SparkSession.builder.appName("Datacamp Pyspark Tutorial")
+    .config("spark.log.level", 'ERROR')
+    .getOrCreate()
+)
 
-df = spark.read.csv('datacamp_ecommerce.csv', header=True, escape="\"")
+# Load the data
+df = spark.read.csv("datacamp_ecommerce.csv", header=True)
 
-df.show(5,0)
+# Print 5 first rows
+df.show(5, 0)
 
-df.count()  # Answer: 2,500
+# Show number of rows
+rows_number = df.count()
+print("number of rows: ", rows_number)
 
-df.select('CustomerID').distinct().count() # Answer: 95
+# EXPLORATORY DATA ANALYSIS
+# Show number of unique customers
+unique_customers_number = df.select("CustomerID").distinct().count()
+print("number of unique customers: ", unique_customers_number)
 
-df.groupBy('Country').agg(countDistinct('CustomerID').alias('country_count')).show()
+# The country which have the most customers
+df.groupBy("Country").agg(countDistinct("CustomerID").alias("Nb_Customers")).orderBy(
+    desc("Nb_Customers")
+).show(5)
 
-df.groupBy('Country').agg(countDistinct('CustomerID').alias('country_count')).orderBy(desc('country_count')).show()
-
+# The last and the first purchase
 spark.sql("set spark.sql.legacy.timeParserPolicy=LEGACY")
-df = df.withColumn('date',to_timestamp("InvoiceDate", 'yy/MM/dd HH:mm'))
+df = df.withColumn("date", to_timestamp(df.InvoiceDate, 'dd/MM/yyyy HH:mm'))
+df.select(min('date').alias('First_Purchase')).show()
+df.select(max('date').alias('Last_Purchase')).show()
 
-df.select(max("date")).show()
-df.select(min("date")).show()
+"""
 
 df = df.withColumn("from_date", lit("12/1/10 08:26"))
 df = df.withColumn('from_date',to_timestamp("from_date", 'yy/MM/dd HH:mm'))
@@ -75,3 +91,4 @@ for i in range(2,10):
     output=KMeans_fit.transform(data_scale_output)
     cost[i] = KMeans_fit.summary.trainingCost
 
+"""
